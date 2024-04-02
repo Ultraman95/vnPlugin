@@ -4,7 +4,6 @@ import sys
 from vnctpmd import MdApi
 from vnctptd import TdApi
 
-
 ##Pythn CtpMdApi###################################################################
 class CtpMdApi(MdApi):
     def __init__(self)->None:
@@ -48,32 +47,31 @@ class CtpMdApi(MdApi):
         self.reqUserLogin(ctp_req,self.reqid)
         pass
 
-    def subscribe(self,req:dict):
+    def subscribe(self,instrumentID:str):
         if self.login_status:
-            self.subscribeMarketData(req['symbol'])
-        self.subscribed.add(req['symbol'])
+            self.subscribeMarketData(instrumentID)
+        self.subscribed.add(instrumentID)
 
     def close(self)->None:
         if self.connect_status:
             self.exit()
 
     def onFrontConnected(self)->None:
-        print("Connected, Start Login")
+        print("MdApi Connected, Start Login")
         self.login()
-        print("login Ok")
+        print("MdApi Login Ok")
         pass
     def onFrontDisconnected(self,reason:int)->None:
-        print("Disconnected")
+        print("MdApi Disconnected")
         self.login_status = False
 
     def onRspUserLogin(self,data:dict,error:dict,reqid:int,last:bool)->None:
-        print("RspUserLogin")
+        print("MdApi RspUserLogin")
         if not error['ErrorID']:
             self.login_status = True
             for symbol in self.subscribed:
-                print("subscribe:",symbol)
+                print("InstrumentID Subscribe:",symbol)
                 self.subscribeMarketData(symbol)
-        else:
             print(f"行情服务器登录失败。{error['ErrorID']}.{error['ErrorMsg']}")
         pass
     def onRspError(self, error: dict, reqid: int, last: bool)->None:
@@ -166,7 +164,7 @@ class CtpTdApi(TdApi):
             self.exit()
  
     def onFrontConnected(self)->None:
-        print('onFrontConnected')
+        print('TdApi Connecte, Start Login')
         if self.auth_code:
             self.authenticate()
         else:
@@ -223,17 +221,6 @@ class CtpTdApi(TdApi):
     pass
 
 
-    ## reqQryInstrument
-    ## reqOrderInsert
-    ## reqOrderAction
-    ## onRspError
-    ## onRspOrderInsert
-    ## onRspOrderAction
-    ## onRtnOrder
-    ## onRtnTrade
-    ## OnRtnInstrumentStatus
-
-
 
 ##md = MdApi()
 ##td = TdApi()
@@ -243,6 +230,7 @@ class CtpTdApi(TdApi):
 ##md.init();
 #print("TdApi Version:" + td.GetApiVersion())
 
+
 if __name__ == '__main__':
     investorid = "047934"
     brokerid="9999"
@@ -250,17 +238,17 @@ if __name__ == '__main__':
     appid= "simnow_client_test"
     auth_code= "0000000000000000"
     md_ip= "tcp://180.168.146.187:10131"
-    trader_ip= "180.168.146.187:10201"
+    trader_ip= "tcp://180.168.146.187:10130"
 
-    temp_api = CtpMdApi()
+    '''temp_MdApi = CtpMdApi()
     ## address = f"tcp://{md_ip}"
-    temp_api.connect(md_ip,investorid,password,brokerid)
-    instrumentDc:dict = {
-            "symbol": "IF2404"
-        }
-    temp_api.subscribe(instrumentDc)
+    temp_MdApi.connect(md_ip,investorid,password,brokerid)
+    temp_MdApi.subscribe("IF2404")
+    temp_MdApi.subscribe("IF2405")'''
 
 
+    temp_TdApi = CtpTdApi()
+    temp_TdApi.connect(trader_ip,investorid,password,brokerid,auth_code,appid)
 
     print("keyboard start")
     import keyboard
