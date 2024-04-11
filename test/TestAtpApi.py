@@ -4,7 +4,7 @@ import sys
 from vnatpmd import MdApi
 from vnatptd import TdApi
 
-##Pythn AtpMdApi###################################################################
+##Pythn AtpMdApi 行情Api###################################################################
 class AtpMdApi(MdApi):
     def __init__(self)->None:
         super().__init__()
@@ -91,7 +91,7 @@ class AtpMdApi(MdApi):
 
 
 
-##Pythn AtpTdApi###################################################################
+##Pythn AtpTdApi 交易Api###################################################################
 class AtpTdApi(TdApi):
     def __init__(self)->None:
         super().__init__()
