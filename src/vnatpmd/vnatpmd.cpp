@@ -1,4 +1,4 @@
-// vnctpmd.cpp : 定义 DLL 应用程序的导出函数。
+// vnatpmd.cpp : 定义 DLL 应用程序的导出函数。
 //
 
 #include "vnatpmd.h"
@@ -813,7 +813,7 @@ public:
 };
 
 
-PYBIND11_MODULE(vnctpmd, m)
+PYBIND11_MODULE(vnatpmd, m)
 {
     class_<MdApi, PyMdApi> mdapi(m, "MdApi", module_local());
     mdapi
