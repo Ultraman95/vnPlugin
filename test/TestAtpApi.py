@@ -1,5 +1,6 @@
 import os
 import sys
+import time
 
 from vnatpmd import MdApi
 from vnatptd import TdApi
@@ -64,6 +65,7 @@ class AtpMdApi(MdApi):
 
     
     def onRspUserLogin(self,data:dict,error:dict,reqid:int,last:bool)->None:
+        ##data对应CThostFtdcRspUserLoginField，error对应CThostFtdcRspInfoField
         print("MdApi RspUserLogin")
         if not error['ErrorID']:
             self.login_status = True
@@ -75,16 +77,19 @@ class AtpMdApi(MdApi):
 
     
     def onRspError(self, error: dict, reqid: int, last: bool)->None:
+        ##error对应CThostFtdcRspInfoField
         print('行情接口报错。',error['ErrorID'],error['ErrorMsg'])
     
     
     def onRspSubMarketData(self, data: dict, error: dict, reqid: int, last: bool)->None:
+        ##data对应CThostFtdcSpecificInstrumentField，error对应CThostFtdcRspInfoField
         if not error or not error['ErrorID']:
             return
         print('行情订阅失败。',error['ErrorID'],error['ErrorMsg'])
     
 
     def onRtnDepthMarketData(self,data:dict)->None:
+        ##data对应CThostFtdcDepthMarketDataField
         if not data['UpdateTime']:
             return
         print('tick返回:InstrumentID[',data['InstrumentID'],'],','LastPrice=',data['LastPrice'])
@@ -101,9 +106,7 @@ class AtpTdApi(TdApi):
 
         self.connect_status: bool = False
         self.login_status: bool = False
-        self.auth_status: bool = False
         self.login_failed: bool = False
-        self.auth_failed: bool = False
         self.contract_inited: bool = False
 
         self.userid: str = ""
@@ -120,7 +123,6 @@ class AtpTdApi(TdApi):
         self.userid = userid
         self.password = password
         self.brokerid = brokerid
-
         if not self.connect_status:
             path = os.path.dirname(os.path.abspath(__file__))
             print(path)
@@ -130,28 +132,12 @@ class AtpTdApi(TdApi):
             self.registerFront(address)
             self.init()
             self.connect_status = True
-        else:
-            self.authenticate()
-        
-
-    def authenticate(self)->None:
-        if self.auth_failed:
-            return
-        ctp_req: dict = {
-            "UserID": self.userid,
-            "BrokerID": self.brokerid,
-            "AuthCode": self.auth_code,
-            "AppID": self.appid
-        }
-
-        self.reqid += 1
-        self.reqAuthenticate(ctp_req, self.reqid)
     
     
     def login(self)->None:
         if self.login_failed:
             return
-        ctp_req: dict = {
+        atp_req: dict = {
             "UserID": self.userid,
             "Password": self.password,
             "BrokerID": self.brokerid,
@@ -159,13 +145,63 @@ class AtpTdApi(TdApi):
         }
 
         self.reqid += 1
-        self.reqUserLogin(ctp_req, self.reqid)
-        
+        self.reqUserLogin(atp_req, self.reqid)
+
 
     def close(self)->None:
         if self.connect_status:
             self.exit()
 
+
+    def orderInsert(self)->None:
+        if self.login_failed:
+            return
+        print('执行OrderInsert')
+        ##其中的OrderRef自己定义，撤单的时候要用到
+        atp_req: dict = {
+            "BrokerID": self.brokerid,
+            "InvestorID": self.userid,
+            "UserID": self.userid,
+            "OrderPriceType":"2",
+            "CombHedgeFlag":"1",
+            "TimeCondition":"3",
+            "VolumeCondition":"1",
+            "CombOffsetFlag":"0",
+            "InstrumentID":"HC2411-SH",
+            "Direction":"0",
+            "LimitPrice":3745.0,
+            "VolumeTotalOriginal":7,
+            "OrderRef":"0009",
+            "MinVolume":0,
+            "ContingentCondition":"1",
+            "StopPrice":0.0,
+            "ForceCloseReason":"0",
+            "IsAutoSuspend":0,
+            "UserForceClose":0,
+            "IsSwapOrder":0,
+            "BusinessUnit":"customized-data",
+            "GTDDate":""
+        }
+        self.reqid += 1
+        self.reqOrderInsert(atp_req, self.reqid)  
+
+
+    def orderCancel(self)->None:
+        if self.login_failed:
+            return
+        print('执行OrderCancel')
+        atp_req: dict = {
+            "BrokerID": self.brokerid,
+            "InvestorID": self.userid,
+            "UserID": self.userid,
+            "ActionFlag": "0",
+            "OrderRef":"0010",
+            "FrontID": self.frontid,
+            "SessionID": self.sessionid
+        }
+        self.reqid += 1
+        self.reqOrderAction(atp_req, self.reqid) 
+        pass
 
     def onFrontConnected(self)->None:
         print('TdApi Connecte, Start Login')
@@ -178,55 +214,71 @@ class AtpTdApi(TdApi):
     def onFrontDisconnected(self,reason:int)->None:
         self.login_status = False
         print('onFrontDisconnected',reason)
-    
-    
-    def onRspAuthenticate(self, data: dict, error: dict, reqid: int, last: bool)->None:
-        print('onRspAuthenticate')
-        if not error['ErrorID']:
-            self.auth_status = True
-            self.login()
-        else:
-            self.auth_failed = True
-            print('交易服务器验证失败。',error['ErrorID'],error['ErrorMsg'])
 
 
     def onRspUserLogin(self, data: dict, error: dict, reqid: int, last: bool) -> None:
+        ##data对应CThostFtdcRspUserLoginField, error对应CThostFtdcRspInfoField
         print('onRspUserLogin')
         if not error["ErrorID"]:
             self.frontid = data["FrontID"]
             self.sessionid = data["SessionID"]
             self.login_status = True
 
-            # 自动确认结算单
-            ctp_req: dict = {
-                "BrokerID": self.brokerid,
-                "InvestorID": self.userid
-            }
-            self.reqid += 1
-            self.reqSettlementInfoConfirm(ctp_req, self.reqid)
+            print('开始合约信息查询')
+            while True:
+                self.reqid += 1
+                n: int = self.reqQryInstrument({}, self.reqid)
+                if not n:
+                    break
+                else:
+                    time.sleep(1)
         else:
             self.login_failed = True
             print("交易服务器登录失败", error['ErrorID'],error['ErrorMsg'])
-
-
-    def onRspSettlementInfoConfirm(self, data: dict, error: dict, reqid: int, last: bool) -> None:
-        print('onRspSettlementInfoConfirm')
-        print('开始合约信息查询')
-        while True:
-            self.reqid += 1
-            n: int = self.reqQryInstrument({}, self.reqid)
-            if not n:
-                break
-            else:
-                time.sleep(1)
     
 
     def onRspQryInstrument(self, data: dict, error: dict, reqid: int, last: bool) -> None:
+        ##data对应CThostFtdcInstrumentField, error对应CThostFtdcRspInfoField
         print(data['ProductClass'],data['InstrumentID'],data['ProductID'],reqid,last)
         if last:
             self.contract_inited = True
             print('合约信息查询完毕')
+
+
+    def onRspOrderInsert(self, data: dict, error: dict, reqid: int, last: bool) -> None:
+        print('onRspOrderInsert')
+
+
+    def OnRspOrderAction(self, data: dict, error: dict, reqid: int, last: bool)-> None:
+        print('OnRspOrderAction')
+
+
+    def onRspError(self, error: dict, reqid: int, last: bool)->None:
+        ##error对应CThostFtdcRspInfoField结构
+        print('交易接口报错。',error['ErrorID'],error['ErrorMsg'])
+
+
+    def OnErrRtnOrderAction(self, data: dict, error: dict)->None:
+        print('交易接口报错。',error['ErrorID'],error['ErrorMsg'])
+
     
+    def onRtnOrder(self, data: dict)->None:
+        ##data对应CThostFtdcOrderField结构
+        print('##onRtnOrder##')
+        self.frontid = data['FrontID']
+        self.sessionid = data['SessionID']
+        for i,j in data.items():
+            print(i,j)
+        print('######end#####')
+
+    
+    def onRtnTrade(self, data: dict)->None:
+        ##data对应CThostFtdcTradeField结构
+        print('##onRtnTrade##')
+        for i,j in data.items():
+            print(i,j)
+        print('######end#####')
+
 
 
 
@@ -239,17 +291,25 @@ if __name__ == '__main__':
 
     
     ##行情Api，连接成功后会根据用户信息自动登录，通过订阅具体的InstrumentID获取相应的行情信息，关于合约信息可以通过交易接口查询
-    '''
+    ''' 
     temp_MdApi = AtpMdApi()
     temp_MdApi.connect(md_ip,investorid,password,brokerid)
-    temp_MdApi.subscribe("CU2406-SH")
-    temp_MdApi.subscribe("ZC2406-ZC")
+    ##temp_MdApi.subscribe("CU2406-SH")
+    temp_MdApi.subscribe("HC2411-SH")
     '''
 
     ##交易Api
     temp_TdApi = AtpTdApi()
     temp_TdApi.connect(trader_ip,investorid,password,brokerid)
 
+    time.sleep(8)
+    ##下单
+    temp_TdApi.orderInsert()
+
+
+    time.sleep(8)
+    ##撤单
+    temp_TdApi.orderCancel()
 
     input()
     #sys.exit()
