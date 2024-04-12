@@ -72,6 +72,7 @@ class CtpMdApi(MdApi):
             for symbol in self.subscribed:
                 print("InstrumentID Subscribe:",symbol)
                 self.subscribeMarketData(symbol)
+        else:
             print(f"行情服务器登录失败。{error['ErrorID']}.{error['ErrorMsg']}")
         pass
     def onRspError(self, error: dict, reqid: int, last: bool)->None:
