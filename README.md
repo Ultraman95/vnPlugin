@@ -28,10 +28,19 @@ clang++ -shared -o vnctptd.pyd vnctptd.o -L ./lib -lthosttraderapi_se -L C:/Prog
 ### Linux手动编译
 
 ``` 
-g++ -c -fPIC -o vnctpmd.o src/vnctpmd/vnctpmd.cpp -I /usr/include/python3.6/ -I ./include/
+### atp
+g++ -c -fPIC -o vnatpmd.o src/vnatpmd/vnatpmd.cpp -I /usr/include/python3.11 -I ./include/
+g++ -shared -o vnatpmd.so vnatpmd.o -L ./lib -lthostmduserapi
+
+g++ -c -fPIC -o vnatptd.o src/vnatptd/vnatptd.cpp -I /usr/include/python3.11 -I ./include/
+g++ -shared -o vnatptd.so vnatptd.o -L ./lib -lthosttraderapi
+
+
+### ctp
+g++ -c -fPIC -o vnctpmd.o src/vnctpmd/vnctpmd.cpp -I /usr/include/python3.11 -I ./include/
 g++ -shared -o vnctpmd.so vnctpmd.o -L ./lib -lthostmduserapi_se
 
-g++ -c -fPIC -o vnctptd.o src/vnctptd/vnctptd.cpp -I /usr/include/python3.6/ -I ./include/
+g++ -c -fPIC -o vnctptd.o src/vnctptd/vnctptd.cpp -I /usr/include/python3.11 -I ./include/
 g++ -shared -o vnctptd.so vnctptd.o -L ./lib -lthosttraderapi_se
 
 ```
