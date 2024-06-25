@@ -1,5 +1,8 @@
 import os
 import sys
+import csv
+import datetime
+import os.path
 
 from vnctpmd import MdApi
 from vnctptd import TdApi
@@ -17,7 +20,20 @@ class CtpMdApi(MdApi):
         self.userid: str = ""
         self.password: str = ""
         self.brokerid: str = ""
-        pass
+
+        self.tradingDay = datetime.date.today().strftime('%Y-%m-%d');
+        filePath = datetime.date.today().strftime('%Y-%m-%d') + '_marketData.csv'
+        if os.path.exists(filePath):
+            fp = open(filePath, 'a', newline='')
+            self.writer = csv.writer(fp)
+            print("文件存在")
+        else:
+            fp = open(filePath, 'a', newline='')
+            self.writer = csv.writer(fp)
+            self.writer.writerow(['InstrumentID', 'LastPrice', 'Volume','Turnover','OpenInterest','BidPrice1','BidVolume1','AskPrice1','AskVolume1','UpdateTime','UpdateMillisec'])
+
+
+
     def connect(self, address: str, userid: str, password: str, brokerid: str)->None:
         self.userid = userid
         self.password = password
@@ -85,7 +101,17 @@ class CtpMdApi(MdApi):
     def onRtnDepthMarketData(self,data:dict)->None:
         if not data['UpdateTime']:
             return
-        print('tick返回',data['InstrumentID'],data['LastPrice'])
+        print(data['InstrumentID'],data['LastPrice'],data['Volume'],data['Turnover'],data['OpenInterest'],data['BidPrice1'],data['BidVolume1'],data['AskPrice1'],data['AskVolume1'],)
+        uT = data['UpdateTime']
+        if data['UpdateMillisec'] == 0:
+            uT += '.000'
+        else:
+            uT = uT + '.' + str(data['UpdateMillisec'])
+        utcDataTime = self.tradingDay + ' ' + uT + ' UTC'
+        print(utcDataTime)
+        self.writer.writerow([data['InstrumentID'],data['LastPrice'],data['Volume'],data['Turnover'],data['OpenInterest'],data['BidPrice1'],data['BidVolume1'],data['AskPrice1'],data['AskVolume1'],utcDataTime,data['UpdateMillisec']])
+        ##for i,j in data.items():
+        ##    print(i,j)
         pass
 
 
@@ -243,14 +269,15 @@ if __name__ == '__main__':
     md_ip= "tcp://180.168.146.187:10211"
     trader_ip= "tcp://180.168.146.187:10201"
 
-    '''temp_MdApi = CtpMdApi()
+    temp_MdApi = CtpMdApi()
     temp_MdApi.connect(md_ip,investorid,password,brokerid)
     temp_MdApi.subscribe("IF2404")
-    temp_MdApi.subscribe("IF2405")'''
+    temp_MdApi.subscribe("IF2405")
 
-
+    '''
     temp_TdApi = CtpTdApi()
     temp_TdApi.connect(trader_ip,investorid,password,brokerid,auth_code,appid)
+    '''
 
     input()
     pass

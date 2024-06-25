@@ -127,8 +127,8 @@ class AtpTdApi(TdApi):
             path = os.path.dirname(os.path.abspath(__file__))
             print(path)
             self.createFtdcTraderApi((str(path) + "\\Td").encode("GBK"))
-            self.subscribePrivateTopic(0)
             self.subscribePublicTopic(0)
+            self.subscribePrivateTopic(0)
             self.registerFront(address)
             self.init()
             self.connect_status = True
@@ -157,7 +157,7 @@ class AtpTdApi(TdApi):
         if self.login_failed:
             return
         print('执行OrderInsert')
-        ##其中的OrderRef自己定义，撤单的时候要用到
+        ##其中的OrderRef自己定义，撤单的时候OrderRef要对应起来
         atp_req: dict = {
             "BrokerID": self.brokerid,
             "InvestorID": self.userid,
@@ -201,7 +201,32 @@ class AtpTdApi(TdApi):
         }
         self.reqid += 1
         self.reqOrderAction(atp_req, self.reqid) 
-        pass
+        
+
+    def qryInvestorPosition(self)->None:
+        if self.login_failed:
+            return
+        print('执行QryInvestorPosition')
+        atp_req: dict = {
+            "BrokerID": self.brokerid,
+            "InvestorID": self.userid
+        }
+        self.reqid += 1
+        self.reqQryInvestorPosition(atp_req, self.reqid)
+
+
+    def qryTradingAccount(self)->None:
+        if self.login_failed:
+            return
+        print('qryTradingAccount')
+        atp_req: dict = {
+            "BrokerID": self.brokerid,
+            "InvestorID": self.userid
+        }
+        self.reqid += 1
+        self.reqQryTradingAccount(atp_req, self.reqid)
+
+
 
     def onFrontConnected(self)->None:
         print('TdApi Connecte, Start Login')
@@ -246,19 +271,17 @@ class AtpTdApi(TdApi):
 
 
     def onRspOrderInsert(self, data: dict, error: dict, reqid: int, last: bool) -> None:
+        ##data对应CThostFtdcInputOrderField结构，error对应CThostFtdcRspInfoField结构
         print('onRspOrderInsert')
 
 
     def OnRspOrderAction(self, data: dict, error: dict, reqid: int, last: bool)-> None:
+        ##data对应CThostFtdcInputOrderActionField结构，error对应CThostFtdcRspInfoField结构
         print('OnRspOrderAction')
 
 
     def onRspError(self, error: dict, reqid: int, last: bool)->None:
         ##error对应CThostFtdcRspInfoField结构
-        print('交易接口报错。',error['ErrorID'],error['ErrorMsg'])
-
-
-    def OnErrRtnOrderAction(self, data: dict, error: dict)->None:
         print('交易接口报错。',error['ErrorID'],error['ErrorMsg'])
 
     
@@ -279,6 +302,21 @@ class AtpTdApi(TdApi):
             print(i,j)
         print('######end#####')
 
+
+    def onRspQryInvestorPosition(self, data: dict, error: dict, reqid: int, last: bool)->None:
+        ##data对应CThostFtdcInvestorPositionField结构, error对应CThostFtdcRspInfoField
+        print('##onRspQryInvestorPosition##')
+        for i,j in data.items():
+            print(i,j)
+        print('######end#####')
+
+
+    def onRspQryTradingAccount(self, data: dict, error: dict, reqid: int, last: bool)->None:
+        ##data对应CThostFtdcTradingAccountField结构, error对应CThostFtdcRspInfoField
+        print('##onRspQryTradingAccount##')
+        for i,j in data.items():
+            print(i,j)
+        print('######end#####')
 
 
 
@@ -302,14 +340,24 @@ if __name__ == '__main__':
     temp_TdApi = AtpTdApi()
     temp_TdApi.connect(trader_ip,investorid,password,brokerid)
 
-    time.sleep(8)
+    #time.sleep(8)
     ##下单
-    temp_TdApi.orderInsert()
+    ##Atp下单成功，OnRtnOrder会被回调，onRspOrderInsert不会被回调，但是下单出错，onRspOrderInsert会被回调，如果有成交OnRtnTrade会被回调
+    ##temp_TdApi.orderInsert()
 
+
+    #time.sleep(8)
+    ##撤单
+    ##temp_TdApi.orderCancel()
+
+    ##time.sleep(8)
+    ##查询持仓
+    ##temp_TdApi.qryInvestorPosition()
 
     time.sleep(8)
-    ##撤单
-    temp_TdApi.orderCancel()
+    ##查询资金
+    temp_TdApi.qryTradingAccount()
+
 
     input()
     #sys.exit()
