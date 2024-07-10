@@ -43,6 +43,14 @@ g++ -shared -o vnctpmd.so vnctpmd.o -L ./lib -lthostmduserapi_se
 g++ -c -fPIC -o vnctptd.o src/vnctptd/vnctptd.cpp -I /usr/include/python3.11 -I ./include/
 g++ -shared -o vnctptd.so vnctptd.o -L ./lib -lthosttraderapi_se
 
+
+### qdp
+g++ -c -fPIC -o vnqdpmd.o src/vnqdpmd/vnqdpmd.cpp -I /usr/include/python3.11 -I ./include/
+g++ -shared -o vnqdpmd.so vnqdpmd.o -L ./lib -lqdmdapi
+
+g++ -c -fPIC -o vnqdptd.o src/vnqdptd/vnqdptd.cpp -I /usr/include/python3.11 -I ./include/
+g++ -shared -o vnqdptd.so vnqdptd.o -L ./lib -lqdptraderapi
+
 ```
 ### 使用
 
